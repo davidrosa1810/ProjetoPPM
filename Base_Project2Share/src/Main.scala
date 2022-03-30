@@ -181,6 +181,7 @@ class Main extends Application {
 object FxApp {
 
   def main(args: Array[String]): Unit = {
+    println("teste")
     Application.launch(classOf[Main], args: _*)
   }
 }
