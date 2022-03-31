@@ -10,6 +10,9 @@ import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.{PerspectiveCamera, Scene, SceneAntialiasing, SubScene}
 
+import scala.io.Source
+
+
 class Main extends Application {
 
   //Auxiliary types
@@ -65,6 +68,15 @@ class Main extends Application {
     wiredBox.setMaterial(redMaterial)
     wiredBox.setDrawMode(DrawMode.LINE)
 
+    val cylinder2 = new Cylinder(0.5, 1, 10)
+    cylinder2.setTranslateX(5)
+    cylinder2.setTranslateY(2)
+    cylinder2.setTranslateZ(2)
+    cylinder2.setScaleX(5)
+    cylinder2.setScaleY(5)
+    cylinder2.setScaleZ(5)
+    cylinder2.setMaterial(redMaterial)
+
     val cylinder1 = new Cylinder(0.5, 1, 10)
     cylinder1.setTranslateX(2)
     cylinder1.setTranslateY(2)
@@ -82,6 +94,25 @@ class Main extends Application {
 
     // 3D objects (group of nodes - javafx.scene.Node) that will be provide to the subScene
     val worldRoot:Group = new Group(wiredBox, camVolume, lineX, lineY, lineZ, cylinder1, box1)
+
+
+    def readFromFile(file: String) = {
+      val bufferedSource = Source.fromFile(file)
+      for (line <- bufferedSource.getLines) {
+        val linha = line.split(" ")
+        if (linha(0) == "Cylinder") {
+          val cylinder2 = new Cylinder(0.5, 1, 10)
+          val translacoes = (linha(2),linha(3),linha(4))
+          cylinder2.setTranslateX(translacoes._1.toDouble)
+          cylinder2.setTranslateY(translacoes._2.toDouble)
+          cylinder2.setTranslateZ(translacoes._3.toDouble)
+          cylinder2.setMaterial(redMaterial)
+          worldRoot.getChildren.add(cylinder2)
+        }
+        else print("Ola")
+      }
+    }
+      readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/Base_Project2Share/configs.txt")
 
     // Camera
     val camera = new PerspectiveCamera(true)
@@ -176,12 +207,16 @@ class Main extends Application {
     println("stopped")
   }
 
+
+
 }
 
 object FxApp {
 
+
+
+
   def main(args: Array[String]): Unit = {
-    println("teste ola david")
     Application.launch(classOf[Main], args: _*)
   }
 }
