@@ -95,6 +95,13 @@ class Main extends Application {
     // 3D objects (group of nodes - javafx.scene.Node) that will be provide to the subScene
     val worldRoot:Group = new Group(wiredBox, camVolume, lineX, lineY, lineZ, cylinder1, box1)
 
+    def checkIntersectingObjects(o:Object):Boolean= {
+      worldRoot.getChildren match{
+        case null => true
+        case x =>
+      }
+    }
+
 
     def readFromFile(file: String) = {
       val bufferedSource = Source.fromFile(file)
@@ -106,10 +113,37 @@ class Main extends Application {
           cylinder2.setTranslateX(translacoes._1.toDouble)
           cylinder2.setTranslateY(translacoes._2.toDouble)
           cylinder2.setTranslateZ(translacoes._3.toDouble)
-          cylinder2.setMaterial(redMaterial)
-          worldRoot.getChildren.add(cylinder2)
+          val scale = (linha(5),linha(6),linha(7))
+          cylinder2.setScaleX(scale._1.toDouble)
+          cylinder2.setScaleY(scale._2.toDouble)
+          cylinder2.setScaleZ(scale._3.toDouble)
+          val color = linha(1).substring(1,linha(1).length-1).split(",")
+          val color2 = new PhongMaterial()
+          color2.setDiffuseColor(Color.rgb(color(0).toInt,color(1).toInt,color(2).toInt))
+          cylinder2.setMaterial(color2)
+          if(wiredBox.getBoundsInParent.contains(cylinder2.asInstanceOf[Shape3D].getBoundsInParent)) {
+            worldRoot.getChildren.add(cylinder2)
+          }
         }
-        else print("Ola")
+        else if(linha(0)=="Cube"){
+          val cube2 = new Box(1, 1, 1)
+          val translacoes = (linha(2),linha(3),linha(4))
+          cube2.setTranslateX(translacoes._1.toDouble)
+          cube2.setTranslateY(translacoes._2.toDouble)
+          cube2.setTranslateZ(translacoes._3.toDouble)
+          val scale = (linha(5),linha(6),linha(7))
+          cube2.setScaleX(scale._1.toDouble)
+          cube2.setScaleY(scale._2.toDouble)
+          cube2.setScaleZ(scale._3.toDouble)
+          val color = linha(1).substring(1,linha(1).length-1).split(",")
+          val color2 = new PhongMaterial()
+          color2.setDiffuseColor(Color.rgb(color(0).toInt,color(1).toInt,color(2).toInt))
+          cube2.setMaterial(color2)
+          if(wiredBox.getBoundsInParent.contains(cube2.asInstanceOf[Shape3D].getBoundsInParent)) {
+            worldRoot.getChildren.add(cube2)
+          }
+        }
+        else println("Objeto desconhecido: " + linha(0))
       }
     }
       readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/Base_Project2Share/configs.txt")
@@ -212,9 +246,6 @@ class Main extends Application {
 }
 
 object FxApp {
-
-
-
 
   def main(args: Array[String]): Unit = {
     Application.launch(classOf[Main], args: _*)
