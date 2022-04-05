@@ -1,16 +1,16 @@
 import javafx.application.Application
-import javafx.geometry.Insets
+import javafx.geometry.{Bounds, Insets, Pos}
 import javafx.scene.paint.PhongMaterial
 import javafx.scene.shape._
 import javafx.scene.transform.{Rotate, Translate}
 import javafx.scene.{Group, Node}
 import javafx.stage.Stage
-import javafx.geometry.Pos
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.{PerspectiveCamera, Scene, SceneAntialiasing, SubScene}
 
 import scala.io.Source
+
 
 
 class Main extends Application {
@@ -35,6 +35,9 @@ class Main extends Application {
     println("Program arguments:" + params.getRaw)
 
     //Materials to be applied to the 3D objects
+    val whiteMaterial = new PhongMaterial()
+    whiteMaterial.setDiffuseColor(Color.rgb(255,255,255))
+
     val redMaterial = new PhongMaterial()
     redMaterial.setDiffuseColor(Color.rgb(150,0,0))
 
@@ -95,11 +98,10 @@ class Main extends Application {
     // 3D objects (group of nodes - javafx.scene.Node) that will be provide to the subScene
     val worldRoot:Group = new Group(wiredBox, camVolume, lineX, lineY, lineZ, cylinder1, box1)
 
-    def checkIntersectingObjects(o:Object):Boolean= {
-      worldRoot.getChildren match{
-        case null => true
-        case x =>
-      }
+    def checkIntersectingObjects(o:Object,index:Int=0):Boolean= {
+      if (worldRoot.getChildren.get(index).getBoundsInParent.contains(o.asInstanceOf[Shape3D].getBoundsInParent)) false
+      else if (index==worldRoot.getChildren.size()) true
+      else checkIntersectingObjects(o,index+1)
     }
 
 
@@ -146,7 +148,7 @@ class Main extends Application {
         else println("Objeto desconhecido: " + linha(0))
       }
     }
-      readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/Base_Project2Share/configs.txt")
+      readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM2/Base_Project2Share/configs.txt")
 
     // Camera
     val camera = new PerspectiveCamera(true)
@@ -190,25 +192,58 @@ class Main extends Application {
 
     val scene = new Scene(root, 810, 610, true, SceneAntialiasing.BALANCED)
 
-    //Mouse left click interaction
-    scene.setOnMouseClicked((event) => {
-      camVolume.setTranslateX(camVolume.getTranslateX + 2)
-      worldRoot.getChildren.removeAll()
-    })
+
 
     //setup and start the Stage
     stage.setTitle("PPM Project 21/22")
     stage.setScene(scene)
     stage.show
 
-/*
+
     //oct1 - example of an Octree[Placement] that contains only one Node (i.e. cylinder1)
     //In case of difficulties to implement task T2 this octree can be used as input for tasks T3, T4 and T5
 
     val placement1: Placement = ((0, 0, 0), 8.0)
-    val sec1: Section = (((0.0,0.0,0.0), 4.0), List(cylinder1.asInstanceOf[Node]))
+    val sec1: Section = (((0.0,0.0,0.0), 2.0), List(cylinder1.asInstanceOf[Node]))
     val ocLeaf1 = OcLeaf(sec1)
-    val oct1:Octree[Placement] = OcNode[Placement](placement1, ocLeaf1, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty)
+    val oct1:Octree[Placement] = OcNode[Placement](placement1, ocLeaf1, OcLeaf(((2.0,0.0,0.0),2.0), Nil), OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty)
+
+    def changePartitionsColor[A](tree:Octree[A]):Any = {
+      tree match {
+        case OcNode(coords, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => {
+          changePartitionsColor[A](up_00)
+          changePartitionsColor[A](up_01)
+          changePartitionsColor[A](up_10)
+          changePartitionsColor[A](up_11)
+          changePartitionsColor[A](down_00)
+          changePartitionsColor[A](down_01)
+          changePartitionsColor[A](down_10)
+          changePartitionsColor[A](down_11)
+        }
+        case OcLeaf(section) => {
+          println("ola")
+          val box = new Box(section.asInstanceOf[Section]._1._2,section.asInstanceOf[Section]._1._2,section.asInstanceOf[Section]._1._2)
+          box.setDrawMode(DrawMode.LINE)
+          box.setTranslateX(section.asInstanceOf[Section]._1._1._1+section.asInstanceOf[Section]._1._2/2)
+          box.setTranslateY(section.asInstanceOf[Section]._1._1._2+section.asInstanceOf[Section]._1._2/2)
+          box.setTranslateZ(section.asInstanceOf[Section]._1._1._3+section.asInstanceOf[Section]._1._2/2)
+          println(section.asInstanceOf[Section]._1._1._1 + " ; " + section.asInstanceOf[Section]._1._1._2 + " ; " + section.asInstanceOf[Section]._1._1._3)
+          worldRoot.getChildren.add(box)
+          if (worldRoot.getChildren.get(1).getBoundsInParent.intersects(box.asInstanceOf[Shape3D].getBoundsInParent)) {
+            worldRoot.getChildren.get(worldRoot.getChildren.size()-1).asInstanceOf[Shape3D].setMaterial(whiteMaterial)
+          }
+          else worldRoot.getChildren.get(worldRoot.getChildren.size()-1).asInstanceOf[Shape3D].setMaterial(blueMaterial)
+        }
+        case OcEmpty =>
+      }
+    }
+
+    //Mouse left click interaction
+    scene.setOnMouseClicked((event) => {
+      camVolume.setTranslateX(camVolume.getTranslateX + 2)
+      //worldRoot.getChildren.removeAll()
+      changePartitionsColor(oct1)
+    })
 
     //example of bounding boxes (corresponding to the octree oct1) added manually to the world
     val b2 = new Box(8,8,8)
@@ -227,10 +262,14 @@ class Main extends Application {
     b3.setMaterial(redMaterial)
     b3.setDrawMode(DrawMode.LINE)
 
+
+
     //adding boxes b2 and b3 to the world
-    worldRoot.getChildren.add(b2)
-    worldRoot.getChildren.add(b3)
-*/
+
+    //worldRoot.getChildren.add(b3)
+
+
+
   }
 
   override def init(): Unit = {
