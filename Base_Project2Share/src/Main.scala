@@ -8,8 +8,11 @@ import javafx.stage.Stage
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.{PerspectiveCamera, Scene, SceneAntialiasing, SubScene}
+import scala.collection.JavaConverters._
+import javafx.collections.transformation.FilteredList
 
 import scala.io.Source
+import scala.jdk.FunctionWrappers.AsJavaPredicate
 
 
 
@@ -148,7 +151,35 @@ class Main extends Application {
         else println("Objeto desconhecido: " + linha(0))
       }
     }
-      readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM2/Base_Project2Share/configs.txt")
+
+    //def getElementFromWorldRoot(f:Node=>Boolean):FilteredList[Node] = {
+      //worldRoot.getChildren.filtered(AsJavaPredicate(f))
+    //}
+
+
+    def makeOctree() = {
+      def aux(outerPlacement:Placement):List[Placement] = {
+        val dim = outerPlacement._2/2
+        val part1 = (outerPlacement._1,dim):Placement
+        val part2 = ((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3),dim):Placement
+        val part3 = ((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3),dim):Placement
+        val part4 = ((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3),dim):Placement
+        val part5 = ((outerPlacement._1._1,outerPlacement._1._2,outerPlacement._1._3+dim),dim):Placement
+        val part6 = ((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3+dim),dim):Placement
+        val part7 = ((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim):Placement
+        val part8 = ((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim):Placement
+        part1::part2::part3::part4::part5::part6::part7::part8::Nil
+      }
+      val boxes = worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode!=DrawMode.LINE)
+      val cylinders = worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Cylinder] && x.asInstanceOf[Cylinder].getDrawMode!=DrawMode.LINE)
+      val objects = boxes:::cylinders
+      val placement1: Placement = ((0, 0, 0), 32.0)
+      aux(placement1)
+      println(objects)
+    }
+
+    readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/Base_Project2Share/configs.txt")
+    makeOctree()
 
     // Camera
     val camera = new PerspectiveCamera(true)
@@ -227,9 +258,8 @@ class Main extends Application {
           box.setTranslateX(section.asInstanceOf[Section]._1._1._1+section.asInstanceOf[Section]._1._2/2)
           box.setTranslateY(section.asInstanceOf[Section]._1._1._2+section.asInstanceOf[Section]._1._2/2)
           box.setTranslateZ(section.asInstanceOf[Section]._1._1._3+section.asInstanceOf[Section]._1._2/2)
-          println(section.asInstanceOf[Section]._1._1._1 + " ; " + section.asInstanceOf[Section]._1._1._2 + " ; " + section.asInstanceOf[Section]._1._1._3)
           worldRoot.getChildren.add(box)
-          if (worldRoot.getChildren.get(1).getBoundsInParent.intersects(box.asInstanceOf[Shape3D].getBoundsInParent)) {
+          if (camVolume.getBoundsInParent.intersects(box.asInstanceOf[Shape3D].getBoundsInParent)) {
             worldRoot.getChildren.get(worldRoot.getChildren.size()-1).asInstanceOf[Shape3D].setMaterial(whiteMaterial)
           }
           else worldRoot.getChildren.get(worldRoot.getChildren.size()-1).asInstanceOf[Shape3D].setMaterial(blueMaterial)
@@ -241,7 +271,6 @@ class Main extends Application {
     //Mouse left click interaction
     scene.setOnMouseClicked((event) => {
       camVolume.setTranslateX(camVolume.getTranslateX + 2)
-      //worldRoot.getChildren.removeAll()
       changePartitionsColor(oct1)
     })
 
@@ -261,12 +290,6 @@ class Main extends Application {
     b3.setTranslateZ(4/2)
     b3.setMaterial(redMaterial)
     b3.setDrawMode(DrawMode.LINE)
-
-
-
-    //adding boxes b2 and b3 to the world
-
-    //worldRoot.getChildren.add(b3)
 
 
 
