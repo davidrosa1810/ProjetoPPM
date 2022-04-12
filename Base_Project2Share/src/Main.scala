@@ -152,29 +152,91 @@ class Main extends Application {
       }
     }
 
+    def scale(factor:Double) = {
+      def aux(x:List[Node]):Any = {
+        x match{
+          case Nil => Nil
+          case y::ys => if(y.isInstanceOf[Box]){
+            val newCoords = (y.getTranslateX*factor,y.getTranslateY*factor,y.getTranslateZ*factor)
+            y.setTranslateX(newCoords._1)
+            y.setTranslateY(newCoords._2)
+            y.setTranslateZ(newCoords._3)
+            y.setScaleX(y.getScaleX*factor)
+            y.setScaleY(y.getScaleY*factor)
+            y.setScaleZ(y.getScaleZ*factor)
+
+          }
+          aux(ys)
+        }
+      }
+      if(factor == 0.5 || factor == 2.0) {
+        val boxes = worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && (x.asInstanceOf[Box].getDrawMode==DrawMode.FILL || (x.asInstanceOf[Box].getMaterial!=redMaterial && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE)))
+        val cylinders = worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Cylinder] && x.asInstanceOf[Cylinder].getDrawMode!=DrawMode.LINE)
+        val objects = boxes:::cylinders
+        aux(objects:List[Node])
+      }
+
+    }
+
     //def getElementFromWorldRoot(f:Node=>Boolean):FilteredList[Node] = {
       //worldRoot.getChildren.filtered(AsJavaPredicate(f))
     //}
 
 
     def makeOctree() = {
-      def aux(outerPlacement:Placement):List[Placement] = {
-        val dim = outerPlacement._2/2
-        val part1 = (outerPlacement._1,dim):Placement
-        val part2 = ((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3),dim):Placement
-        val part3 = ((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3),dim):Placement
-        val part4 = ((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3),dim):Placement
-        val part5 = ((outerPlacement._1._1,outerPlacement._1._2,outerPlacement._1._3+dim),dim):Placement
-        val part6 = ((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3+dim),dim):Placement
-        val part7 = ((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim):Placement
-        val part8 = ((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim):Placement
-        part1::part2::part3::part4::part5::part6::part7::part8::Nil
-      }
       val boxes = worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode!=DrawMode.LINE)
       val cylinders = worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Cylinder] && x.asInstanceOf[Cylinder].getDrawMode!=DrawMode.LINE)
       val objects = boxes:::cylinders
       val placement1: Placement = ((0, 0, 0), 32.0)
-      aux(placement1)
+      val oct1:Octree[Placement] = OcNode[Placement](placement1,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty)
+      val listUncheckedPartitions = java.util.List[Node]
+
+
+      def recursiveFunction(papa:Node,granpapa:Node,box:Box) = {
+        if(checkIntersects(box,objects)) listUncheckedPartitions.
+      }
+      def makeBox(plac:Placement):Box = {
+        val box = new Box(plac._2, plac._2, plac._2)
+        box.setTranslateX(plac._2 / 2 + plac._1._1)
+        box.setTranslateY(plac._2 / 2 + plac._1._2)
+        box.setTranslateZ(plac._2 / 2 + plac._1._3)
+        box.setDrawMode(DrawMode.LINE)
+        box
+      }
+      def checkContains(box:Box, objs:List[Node]):Boolean = {
+        objs match{
+          case Nil => false
+          case y::ys => {
+            if(box.getBoundsInParent.contains(y.asInstanceOf[Shape3D].getBoundsInParent)) {
+              true
+            }
+            else checkContains(box,ys)
+          }
+        }
+      }
+      def checkIntersects(box:Box,objs:List[Node]):Boolean = {
+        objs match{
+          case Nil => false
+          case y::ys =>{
+            if(box.getBoundsInParent.intersects(y.asInstanceOf[Shape3D].getBoundsInParent)) true
+            else checkIntersects(box,ys)
+          }
+        }
+      }
+      def aux1(outerPlacement:Placement):List[Box] = {
+        val dim = outerPlacement._2/2
+        val part1 = makeBox(outerPlacement._1,dim)
+        val part2 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3),dim)
+        val part3 = makeBox((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3),dim)
+        val part4 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3),dim)
+        val part5 = makeBox((outerPlacement._1._1,outerPlacement._1._2,outerPlacement._1._3+dim),dim)
+        val part6 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3+dim),dim)
+        val part7 = makeBox((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim)
+        val part8 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim)
+        part1::part2::part3::part4::part5::part6::part7::part8::Nil
+      }
+
+      aux1(placement1)
       println(objects)
     }
 
@@ -239,6 +301,7 @@ class Main extends Application {
     val ocLeaf1 = OcLeaf(sec1)
     val oct1:Octree[Placement] = OcNode[Placement](placement1, ocLeaf1, OcLeaf(((2.0,0.0,0.0),2.0), Nil), OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty)
 
+
     def changePartitionsColor[A](tree:Octree[A]):Any = {
       tree match {
         case OcNode(coords, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => {
@@ -252,7 +315,6 @@ class Main extends Application {
           changePartitionsColor[A](down_11)
         }
         case OcLeaf(section) => {
-          println("ola")
           val box = new Box(section.asInstanceOf[Section]._1._2,section.asInstanceOf[Section]._1._2,section.asInstanceOf[Section]._1._2)
           box.setDrawMode(DrawMode.LINE)
           box.setTranslateX(section.asInstanceOf[Section]._1._1._1+section.asInstanceOf[Section]._1._2/2)
@@ -272,6 +334,7 @@ class Main extends Application {
     scene.setOnMouseClicked((event) => {
       camVolume.setTranslateX(camVolume.getTranslateX + 2)
       changePartitionsColor(oct1)
+      //scale(2.0)
     })
 
     //example of bounding boxes (corresponding to the octree oct1) added manually to the world
