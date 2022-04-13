@@ -155,11 +155,9 @@ class Main extends Application {
       }
     }
 
+    readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/Base_Project2Share/configs.txt")
 
 
-    //def getElementFromWorldRoot(f:Node=>Boolean):FilteredList[Node] = {
-      //worldRoot.getChildren.filtered(AsJavaPredicate(f))
-    //}
 
     def getObjects(parts:Boolean):List[Node] = {
       val boxes = if(parts){
@@ -170,7 +168,127 @@ class Main extends Application {
       objects
     }
 
+    def makeBox(plac:Placement):Box = {
+      val box = new Box(plac._2, plac._2, plac._2)
+      box.setTranslateX(plac._2 / 2 + plac._1._1)
+      box.setTranslateY(plac._2 / 2 + plac._1._2)
+      box.setTranslateZ(plac._2 / 2 + plac._1._3)
+      box.setDrawMode(DrawMode.LINE)
+      box.setMaterial(whiteMaterial)
+      worldRoot.getChildren.add(box)
+      box
+    }
 
+    def caixinhasMagicas(outerPlacement:Placement):List[Box] = {
+      val dim = outerPlacement._2/2
+      val part1 = makeBox(outerPlacement._1,dim)
+      val part2 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3),dim)
+      val part3 = makeBox((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3),dim)
+      val part4 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3),dim)
+      val part5 = makeBox((outerPlacement._1._1,outerPlacement._1._2,outerPlacement._1._3+dim),dim)
+      val part6 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3+dim),dim)
+      val part7 = makeBox((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim)
+      val part8 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim)
+      part1::part2::part3::part4::part5::part6::part7::part8::Nil
+
+    }
+
+    def depth(node:Node,i:Int,caixas:List[Box]):Int = {
+      caixas match{
+        case Nil => 0
+        case x::xs => {
+          if(x.getBoundsInParent.contains(node.getBoundsInParent)) {
+            println(x + " contem " + node + " no nivel " + i)
+            val placement = ((x.getTranslateX-x.getWidth/2,x.getTranslateY-x.getWidth/2,x.getTranslateZ-x.getWidth/2),x.getWidth)
+            println(placement)
+            depth(node,i+1,caixinhasMagicas(placement))
+          }
+          else if(x.getBoundsInParent.intersects(node.getBoundsInParent)){
+            println(x + " interseta " + node + " no nivel " + i)
+            i
+          }
+          else depth(node,i,xs)
+        }
+      }
+    }
+
+    def calculateDepth(objs:List[Node]):List[Int] = {
+      println(objs)
+      objs match{
+        case Nil => Nil
+        case x::xs => depth(x,0,caixinhasMagicas((0.0,0.0,0.0),32))::calculateDepth(xs)
+      }
+    }
+
+    def minimumDepth():Int = {
+      calculateDepth(getObjects(false)).min
+    }
+
+    def checkContains(obj:Node, objs:List[Node]):Boolean = {
+      objs match{
+        case Nil => false
+        case y::ys => {
+          if(obj.getBoundsInParent.contains(y.asInstanceOf[Shape3D].getBoundsInParent)) {
+            true
+          }
+          else checkContains(obj,ys)
+        }
+      }
+    }
+
+    def getContainedObjects(obj:Node, objs:List[Node]):List[Node] = {
+      objs match{
+        case Nil => Nil
+        case y::ys => {
+          if(obj.getBoundsInParent.contains(y.asInstanceOf[Shape3D].getBoundsInParent)) y::getContainedObjects(obj,ys)
+          else getContainedObjects(obj,ys)
+        }
+      }
+    }
+
+
+    def createOctree(depth:Int,objs:List[Node]):Octree[Placement] = {
+      val placement1: Placement = ((0,0,0),32)
+      val oct1:Octree[Placement] = makeNode(placement1,depth) //OcNode[Placement](placement1,makeNode(((0,0,0),placement1._2/2),depth),makeNode(((1,0,0),placement1._2/2),depth),makeNode(((0,1,0),placement1._2/2),depth),makeNode(((1,1,0),placement1._2/2),depth),
+        //makeNode(((0,0,1),placement1._2/2),depth),makeNode(((1,0,1),placement1._2/2),depth),makeNode(((0,1,1),placement1._2/2),depth),makeNode(((1,1,1),placement1._2/2),depth))
+    }
+
+    def makeNode(placement:Placement, depth:Int):OcNode[Placement] = {
+      //val placement2 = ((placement._1._1*placement._2/2,placement._1._2*placement._2/2,placement._1._3*placement._2/2),placement._2)
+      val box = makeBox(placement)
+      if(checkContains(box,getObjects(false))){
+        if(depth==0){
+          OcLeaf(placement,getContainedObjects(box,getObjects(false)))
+        }
+        else OcNode(placement,makeNode(((0,0,0),placement._2/2),depth-1),makeNode(((1,0,0),placement._2/2),depth-1),makeNode(((0,1,0),placement2._2/2),depth-1),makeNode(((1,1,0),placement2._2/2),depth-1),
+          makeNode(((0,0,1),placement2._2/2),depth-1),makeNode(((1,0,1),placement2._2/2),depth-1),makeNode(((0,1,1),placement2._2/2),depth-1),makeNode(((1,1,1),placement2._2/2),depth-1))
+      }
+      else
+    }
+
+    def insertTree(depth: Int, t:Octree[Placement],objs:List[Node]):Octree[Placement]={
+      t match {
+        case OcEmpty => if(depth==0)
+          OcLeaf(a,Empty, Empty)
+        case OcNode(v, left, right) =>
+          if(a._1 < v._1)
+            OcNode(v, left, insertTree(a, right))
+          else if (a._1 > v._1)
+            OcNode(v, insertTree(a,left),right)
+          else
+            t
+      }
+    }
+
+
+
+
+
+
+
+
+
+/*
     def makeOctree() = {
       val objects = getObjects(false)
       val placement1: Placement = ((0, 0, 0), 32.0)
@@ -200,25 +318,13 @@ class Main extends Application {
         }
       }
 
-      def aux1(outerPlacement:Placement):List[Box] = {
-        val dim = outerPlacement._2/2
-        val part1 = makeBox(outerPlacement._1,dim)
-        val part2 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3),dim)
-        val part3 = makeBox((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3),dim)
-        val part4 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3),dim)
-        val part5 = makeBox((outerPlacement._1._1,outerPlacement._1._2,outerPlacement._1._3+dim),dim)
-        val part6 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2,outerPlacement._1._3+dim),dim)
-        val part7 = makeBox((outerPlacement._1._1,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim)
-        val part8 = makeBox((outerPlacement._1._1+dim,outerPlacement._1._2+dim,outerPlacement._1._3+dim),dim)
-        part1::part2::part3::part4::part5::part6::part7::part8::Nil
-      }
 
-      aux1(placement1)
+      caixinhasMagicas(placement1)
       println(objects)
-    }
+    } */
 
-    readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/Base_Project2Share/configs.txt")
-    makeOctree()
+
+    //makeOctree()
 
     // Camera
     val camera = new PerspectiveCamera(true)
@@ -276,16 +382,14 @@ class Main extends Application {
     val placement1: Placement = ((0, 0, 0), 8.0)
     val sec1: Section = (((0.0,0.0,0.0), 2.0), List())
     val ocLeaf1 = OcLeaf(sec1)
-    val oct1:Octree[Placement] = OcNode[Placement](placement1, ocLeaf1, OcLeaf(((2.0,0.0,0.0),2.0), Nil), OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty)
+    var oct1:Octree[Placement] = OcNode[Placement](placement1, ocLeaf1, OcLeaf(((2.0,0.0,0.0),2.0), Nil), OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty)
 
     def getPartitions():List[Node] = {
       val list = worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE && x.asInstanceOf[Box].getMaterial!=redMaterial)
       list
     }
     def getPartition(sec:Section):Node = {
-      println(sec)
       val translations = (sec._1._1._1+sec._1._2/2, sec._1._1._2+sec._1._2/2, sec._1._1._3+sec._1._2/2)
-      println(translations)
       val box = getPartitions.filter(x=>x.asInstanceOf[Box].getTranslateX==translations._1 && x.asInstanceOf[Box].getTranslateY==translations._2 && x.asInstanceOf[Box].getTranslateZ==translations._3).head
       box
     }
@@ -354,22 +458,20 @@ class Main extends Application {
             OcNode(placement2, scaleOcTree(up_00), scaleOcTree(up_01), scaleOcTree(up_10), scaleOcTree(up_11), scaleOcTree(down_00), scaleOcTree(down_01), scaleOcTree(down_10), scaleOcTree(down_11))
           }
           case OcLeaf(section) => {
-            println(section)
             val sec2 = scalePlacement(section.asInstanceOf[Section]._1)
-            println(sec2)
-            OcLeaf(sec2)
+            OcLeaf((sec2,section.asInstanceOf[Section]._2))
           }
           case OcEmpty => OcEmpty
         }
       }
       scaleObjects(getObjects(true))
-      scaleOcTree()
+      oct1 = scaleOcTree()
     }
 
     //Mouse left click interaction
     scene.setOnMouseClicked((event) => {
       camVolume.setTranslateX(camVolume.getTranslateX + 2)
-      scale(2.0)
+      //scale(2)
       changePartitionsColor(oct1)
     })
 
@@ -389,11 +491,7 @@ class Main extends Application {
     b3.setTranslateZ(4/2)
     b3.setMaterial(redMaterial)
     b3.setDrawMode(DrawMode.LINE)
-
-
-
   }
-
 
   override def init(): Unit = {
     println("init")
@@ -403,8 +501,6 @@ class Main extends Application {
     println("stopped")
   }
 
-
-
 }
 
 object FxApp {
@@ -413,4 +509,3 @@ object FxApp {
     Application.launch(classOf[Main], args: _*)
   }
 }
-
