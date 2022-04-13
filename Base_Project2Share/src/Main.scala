@@ -74,16 +74,16 @@ class Main extends Application {
     wiredBox.setMaterial(redMaterial)
     wiredBox.setDrawMode(DrawMode.LINE)
 
-    val cylinder2 = new Cylinder(0.5, 1, 10)
+    /* val cylinder2 = new Cylinder(0.5, 1, 10)
     cylinder2.setTranslateX(5)
     cylinder2.setTranslateY(2)
     cylinder2.setTranslateZ(2)
     cylinder2.setScaleX(5)
     cylinder2.setScaleY(5)
     cylinder2.setScaleZ(5)
-    cylinder2.setMaterial(redMaterial)
+    cylinder2.setMaterial(redMaterial) */
 
-    val cylinder1 = new Cylinder(0.5, 1, 10)
+    /* val cylinder1 = new Cylinder(0.5, 1, 10)
     cylinder1.setTranslateX(2)
     cylinder1.setTranslateY(2)
     cylinder1.setTranslateZ(2)
@@ -92,21 +92,24 @@ class Main extends Application {
     cylinder1.setScaleZ(2)
     cylinder1.setMaterial(greenMaterial)
 
-    val box1 = new Box(1, 1, 1)  //
+    val box1 = new Box(1, 1, 1)
     box1.setTranslateX(5)
     box1.setTranslateY(5)
     box1.setTranslateZ(5)
-    box1.setMaterial(greenMaterial)
+    box1.setMaterial(greenMaterial) */
 
     // 3D objects (group of nodes - javafx.scene.Node) that will be provide to the subScene
-    val worldRoot:Group = new Group(wiredBox, camVolume, lineX, lineY, lineZ, cylinder1, box1)
+    val worldRoot:Group = new Group(wiredBox, camVolume, lineX, lineY, lineZ)
 
-    def checkIntersectingObjects(o:Object,index:Int=0):Boolean= {
-      if (worldRoot.getChildren.get(index).getBoundsInParent.contains(o.asInstanceOf[Shape3D].getBoundsInParent)) false
-      else if (index==worldRoot.getChildren.size()) true
-      else checkIntersectingObjects(o,index+1)
+    def checkIntersects(obj:Node,objs:List[Node]):Boolean = {
+      objs match{
+        case Nil => false
+        case y::ys =>{
+          if(obj.getBoundsInParent.intersects(y.asInstanceOf[Shape3D].getBoundsInParent)) true
+          else checkIntersects(obj,ys)
+        }
+      }
     }
-
 
     def readFromFile(file: String) = {
       val bufferedSource = Source.fromFile(file)
@@ -126,7 +129,7 @@ class Main extends Application {
           val color2 = new PhongMaterial()
           color2.setDiffuseColor(Color.rgb(color(0).toInt,color(1).toInt,color(2).toInt))
           cylinder2.setMaterial(color2)
-          if(wiredBox.getBoundsInParent.contains(cylinder2.asInstanceOf[Shape3D].getBoundsInParent)) {
+          if(wiredBox.getBoundsInParent.contains(cylinder2.asInstanceOf[Shape3D].getBoundsInParent) && !checkIntersects(cylinder2,getObjects(false))) {
             worldRoot.getChildren.add(cylinder2)
           }
         }
@@ -144,7 +147,7 @@ class Main extends Application {
           val color2 = new PhongMaterial()
           color2.setDiffuseColor(Color.rgb(color(0).toInt,color(1).toInt,color(2).toInt))
           cube2.setMaterial(color2)
-          if(wiredBox.getBoundsInParent.contains(cube2.asInstanceOf[Shape3D].getBoundsInParent)) {
+          if(wiredBox.getBoundsInParent.contains(cube2.asInstanceOf[Shape3D].getBoundsInParent) && !checkIntersects(cube2,getObjects(false))) {
             worldRoot.getChildren.add(cube2)
           }
         }
@@ -152,48 +155,30 @@ class Main extends Application {
       }
     }
 
-    def scale(factor:Double) = {
-      def aux(x:List[Node]):Any = {
-        x match{
-          case Nil => Nil
-          case y::ys => if(y.isInstanceOf[Box]){
-            val newCoords = (y.getTranslateX*factor,y.getTranslateY*factor,y.getTranslateZ*factor)
-            y.setTranslateX(newCoords._1)
-            y.setTranslateY(newCoords._2)
-            y.setTranslateZ(newCoords._3)
-            y.setScaleX(y.getScaleX*factor)
-            y.setScaleY(y.getScaleY*factor)
-            y.setScaleZ(y.getScaleZ*factor)
 
-          }
-          aux(ys)
-        }
-      }
-      if(factor == 0.5 || factor == 2.0) {
-        val boxes = worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && (x.asInstanceOf[Box].getDrawMode==DrawMode.FILL || (x.asInstanceOf[Box].getMaterial!=redMaterial && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE)))
-        val cylinders = worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Cylinder] && x.asInstanceOf[Cylinder].getDrawMode!=DrawMode.LINE)
-        val objects = boxes:::cylinders
-        aux(objects:List[Node])
-      }
-
-    }
 
     //def getElementFromWorldRoot(f:Node=>Boolean):FilteredList[Node] = {
       //worldRoot.getChildren.filtered(AsJavaPredicate(f))
     //}
 
-
-    def makeOctree() = {
-      val boxes = worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode!=DrawMode.LINE)
+    def getObjects(parts:Boolean):List[Node] = {
+      val boxes = if(parts){
+        worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && (x.asInstanceOf[Box].getDrawMode==DrawMode.FILL || (x.asInstanceOf[Box].getMaterial!=redMaterial && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE)))
+      } else worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode!=DrawMode.LINE)
       val cylinders = worldRoot.getChildren.asScala.toList.filter(x=> x.isInstanceOf[Cylinder] && x.asInstanceOf[Cylinder].getDrawMode!=DrawMode.LINE)
       val objects = boxes:::cylinders
+      objects
+    }
+
+
+    def makeOctree() = {
+      val objects = getObjects(false)
       val placement1: Placement = ((0, 0, 0), 32.0)
       val oct1:Octree[Placement] = OcNode[Placement](placement1,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty)
-      val listUncheckedPartitions = java.util.List[Node]
 
 
       def recursiveFunction(papa:Node,granpapa:Node,box:Box) = {
-        if(checkIntersects(box,objects)) listUncheckedPartitions.
+
       }
       def makeBox(plac:Placement):Box = {
         val box = new Box(plac._2, plac._2, plac._2)
@@ -203,26 +188,18 @@ class Main extends Application {
         box.setDrawMode(DrawMode.LINE)
         box
       }
-      def checkContains(box:Box, objs:List[Node]):Boolean = {
+      def checkContains(obj:Node, objs:List[Node]):Boolean = {
         objs match{
           case Nil => false
           case y::ys => {
-            if(box.getBoundsInParent.contains(y.asInstanceOf[Shape3D].getBoundsInParent)) {
+            if(obj.getBoundsInParent.contains(y.asInstanceOf[Shape3D].getBoundsInParent)) {
               true
             }
-            else checkContains(box,ys)
+            else checkContains(obj,ys)
           }
         }
       }
-      def checkIntersects(box:Box,objs:List[Node]):Boolean = {
-        objs match{
-          case Nil => false
-          case y::ys =>{
-            if(box.getBoundsInParent.intersects(y.asInstanceOf[Shape3D].getBoundsInParent)) true
-            else checkIntersects(box,ys)
-          }
-        }
-      }
+
       def aux1(outerPlacement:Placement):List[Box] = {
         val dim = outerPlacement._2/2
         val part1 = makeBox(outerPlacement._1,dim)
@@ -297,14 +274,40 @@ class Main extends Application {
     //In case of difficulties to implement task T2 this octree can be used as input for tasks T3, T4 and T5
 
     val placement1: Placement = ((0, 0, 0), 8.0)
-    val sec1: Section = (((0.0,0.0,0.0), 2.0), List(cylinder1.asInstanceOf[Node]))
+    val sec1: Section = (((0.0,0.0,0.0), 2.0), List())
     val ocLeaf1 = OcLeaf(sec1)
     val oct1:Octree[Placement] = OcNode[Placement](placement1, ocLeaf1, OcLeaf(((2.0,0.0,0.0),2.0), Nil), OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty)
 
+    def getPartitions():List[Node] = {
+      val list = worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE && x.asInstanceOf[Box].getMaterial!=redMaterial)
+      list
+    }
+    def getPartition(sec:Section):Node = {
+      println(sec)
+      val translations = (sec._1._1._1+sec._1._2/2, sec._1._1._2+sec._1._2/2, sec._1._1._3+sec._1._2/2)
+      println(translations)
+      val box = getPartitions.filter(x=>x.asInstanceOf[Box].getTranslateX==translations._1 && x.asInstanceOf[Box].getTranslateY==translations._2 && x.asInstanceOf[Box].getTranslateZ==translations._3).head
+      box
+    }
+
+    val partition1 = new Box(2, 2, 2)
+    partition1.setTranslateX(1)
+    partition1.setTranslateY(1)
+    partition1.setTranslateZ(1)
+    partition1.setMaterial(greenMaterial)
+    partition1.setDrawMode(DrawMode.LINE)
+    val partition2 = new Box(2, 2, 2)
+    partition2.setTranslateX(3)
+    partition2.setTranslateY(1)
+    partition2.setTranslateZ(1)
+    partition2.setMaterial(greenMaterial)
+    partition2.setDrawMode(DrawMode.LINE)
+    worldRoot.getChildren.add(partition1)
+    worldRoot.getChildren.add(partition2)
 
     def changePartitionsColor[A](tree:Octree[A]):Any = {
       tree match {
-        case OcNode(coords, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => {
+        case OcNode(_, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => {
           changePartitionsColor[A](up_00)
           changePartitionsColor[A](up_01)
           changePartitionsColor[A](up_10)
@@ -315,26 +318,59 @@ class Main extends Application {
           changePartitionsColor[A](down_11)
         }
         case OcLeaf(section) => {
-          val box = new Box(section.asInstanceOf[Section]._1._2,section.asInstanceOf[Section]._1._2,section.asInstanceOf[Section]._1._2)
-          box.setDrawMode(DrawMode.LINE)
-          box.setTranslateX(section.asInstanceOf[Section]._1._1._1+section.asInstanceOf[Section]._1._2/2)
-          box.setTranslateY(section.asInstanceOf[Section]._1._1._2+section.asInstanceOf[Section]._1._2/2)
-          box.setTranslateZ(section.asInstanceOf[Section]._1._1._3+section.asInstanceOf[Section]._1._2/2)
-          worldRoot.getChildren.add(box)
+          val box = getPartition(section.asInstanceOf[Section])
           if (camVolume.getBoundsInParent.intersects(box.asInstanceOf[Shape3D].getBoundsInParent)) {
-            worldRoot.getChildren.get(worldRoot.getChildren.size()-1).asInstanceOf[Shape3D].setMaterial(whiteMaterial)
+            box.asInstanceOf[Shape3D].setMaterial(whiteMaterial)
           }
-          else worldRoot.getChildren.get(worldRoot.getChildren.size()-1).asInstanceOf[Shape3D].setMaterial(blueMaterial)
+          else box.asInstanceOf[Shape3D].setMaterial(blueMaterial)
         }
         case OcEmpty =>
       }
     }
 
+    def scale(factor:Double) = {
+      def scaleObjects(x:List[Node]):Any = {
+        x match{
+          case Nil => Nil
+          case y::ys => {
+            val newCoords = (y.getTranslateX*factor,y.getTranslateY*factor,y.getTranslateZ*factor)
+            y.setTranslateX(newCoords._1)
+            y.setTranslateY(newCoords._2)
+            y.setTranslateZ(newCoords._3)
+            y.setScaleX(y.getScaleX*factor)
+            y.setScaleY(y.getScaleY*factor)
+            y.setScaleZ(y.getScaleZ*factor)
+          }
+            scaleObjects(ys)
+        }
+      }
+      def scaleOcTree[A](tree:Octree[Placement]=oct1):Octree[Placement] = {
+        def scalePlacement(plac: => Placement):Placement = {
+          ((plac._1._1*factor, plac._1._2*factor, plac._1._3*factor), plac._2*factor)
+        }
+        tree match {
+          case OcNode(placement, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => {
+            val placement2 = scalePlacement(placement)
+            OcNode(placement2, scaleOcTree(up_00), scaleOcTree(up_01), scaleOcTree(up_10), scaleOcTree(up_11), scaleOcTree(down_00), scaleOcTree(down_01), scaleOcTree(down_10), scaleOcTree(down_11))
+          }
+          case OcLeaf(section) => {
+            println(section)
+            val sec2 = scalePlacement(section.asInstanceOf[Section]._1)
+            println(sec2)
+            OcLeaf(sec2)
+          }
+          case OcEmpty => OcEmpty
+        }
+      }
+      scaleObjects(getObjects(true))
+      scaleOcTree()
+    }
+
     //Mouse left click interaction
     scene.setOnMouseClicked((event) => {
       camVolume.setTranslateX(camVolume.getTranslateX + 2)
+      scale(2.0)
       changePartitionsColor(oct1)
-      //scale(2.0)
     })
 
     //example of bounding boxes (corresponding to the octree oct1) added manually to the world
@@ -357,6 +393,7 @@ class Main extends Application {
 
 
   }
+
 
   override def init(): Unit = {
     println("init")
