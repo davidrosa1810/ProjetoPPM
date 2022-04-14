@@ -8,11 +8,10 @@ import javafx.stage.Stage
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.{PerspectiveCamera, Scene, SceneAntialiasing, SubScene}
+import javafx.scene.input._
 import scala.collection.JavaConverters._
-import javafx.collections.transformation.FilteredList
 
 import scala.io.Source
-import scala.jdk.FunctionWrappers.AsJavaPredicate
 
 
 
@@ -175,7 +174,7 @@ class Main extends Application {
       box.setTranslateZ(plac._2 / 2 + plac._1._3)
       box.setDrawMode(DrawMode.LINE)
       box.setMaterial(whiteMaterial)
-      worldRoot.getChildren.add(box)
+      //worldRoot.getChildren.add(box)
       box
     }
 
@@ -212,17 +211,22 @@ class Main extends Application {
       }
     }
 
-    def calculateDepth(objs:List[Node]):List[Int] = {
+    def calculateDepth(placement:Placement,objs:List[Node]):List[Int] = {
       println(objs)
       objs match{
         case Nil => Nil
-        case x::xs => depth(x,0,caixinhasMagicas((0.0,0.0,0.0),32))::calculateDepth(xs)
+        case x::xs => depth(x,0,caixinhasMagicas(placement))::calculateDepth(placement,xs)
       }
     }
 
-    def minimumDepth():Int = {
-      calculateDepth(getObjects(false)).min
+    def minimumDepth(x:Option[Placement]=None):Int = {
+      if(x.nonEmpty){
+        if(calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false))).isEmpty) -1
+        else calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false))).min
+      }
+      else calculateDepth(((0.0,0.0,0.0),32),getObjects(false)).min
     }
+
 
     def checkContains(obj:Node, objs:List[Node]):Boolean = {
       objs match{
@@ -254,43 +258,32 @@ class Main extends Application {
       oct1
     }
 
+
+
     def makeNode(placement:Placement, depth:Int):Octree[Placement] = {
-      //val placement2 = ((placement._1._1*placement._2/2,placement._1._2*placement._2/2,placement._1._3*placement._2/2),placement._2)
       val box = makeBox(placement)
       if(checkContains(box,getObjects(false))){
         if(depth==0){
+          if(!checkIntersects(camVolume,List(box))) box.setMaterial(blueMaterial)
+          worldRoot.getChildren.add(box)
           OcLeaf(placement,getContainedObjects(box,getObjects(false)):List[Node])
         }
-        else OcNode(placement,
-          makeNode((placement._1,placement._2/2),depth-1),
-          makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3),placement._2/2),depth-1),
-          makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3),placement._2/2),depth-1),
-          makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3),placement._2/2),depth-1),
-          makeNode(((placement._1._1,placement._1._2,placement._1._3+placement._2/2),placement._2/2),depth-1),
-          makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3+placement._2/2),placement._2/2),depth-1),
-          makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),depth-1),
-          makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),depth-1))
+        else{
+          OcNode(placement,
+            makeNode((placement._1,placement._2/2),minimumDepth(Option(placement._1,placement._2/2))),
+            makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2,placement._1._3),placement._2/2))),
+            makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2+placement._2/2,placement._1._3),placement._2/2))),
+            makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3),placement._2/2))),
+            makeNode(((placement._1._1,placement._1._2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2,placement._1._3+placement._2/2),placement._2/2))),
+            makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2,placement._1._3+placement._2/2),placement._2/2))),
+            makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2))),
+            makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2))))
+        }
       }
       else OcEmpty
     }
 
 
-    /*
-    def insertTree(depth: Int, t:Octree[Placement],objs:List[Node]):Octree[Placement]={
-      t match {
-        case OcEmpty => if(depth==0)
-          OcLeaf(a,Empty, Empty)
-        case OcNode(v, left, right) =>
-          if(a._1 < v._1)
-            OcNode(v, left, insertTree(a, right))
-          else if (a._1 > v._1)
-            OcNode(v, insertTree(a,left),right)
-          else
-            t
-      }
-    }
-
-     */
 
 
 
@@ -336,7 +329,7 @@ class Main extends Application {
     } */
 
 
-    //makeOctree()
+    //createOctree(minimumDepth(),getObjects(false))
 
     // Camera
     val camera = new PerspectiveCamera(true)
@@ -391,21 +384,32 @@ class Main extends Application {
     //oct1 - example of an Octree[Placement] that contains only one Node (i.e. cylinder1)
     //In case of difficulties to implement task T2 this octree can be used as input for tasks T3, T4 and T5
 
+    /*
     val placement1: Placement = ((0, 0, 0), 8.0)
     val sec1: Section = (((0.0,0.0,0.0), 2.0), List())
     val ocLeaf1 = OcLeaf(sec1)
     var oct1:Octree[Placement] = OcNode[Placement](placement1, ocLeaf1, OcLeaf(((2.0,0.0,0.0),2.0), Nil), OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty)
 
+
+     */
+
+
+    var oct1 = createOctree(minimumDepth(),getObjects(false))
+    println(oct1)
+
     def getPartitions():List[Node] = {
       val list = worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE && x.asInstanceOf[Box].getMaterial!=redMaterial)
+      println(list)
       list
     }
     def getPartition(sec:Section):Node = {
       val translations = (sec._1._1._1+sec._1._2/2, sec._1._1._2+sec._1._2/2, sec._1._1._3+sec._1._2/2)
       val box = getPartitions.filter(x=>x.asInstanceOf[Box].getTranslateX==translations._1 && x.asInstanceOf[Box].getTranslateY==translations._2 && x.asInstanceOf[Box].getTranslateZ==translations._3).head
+      println(box)
       box
     }
 
+    /*
     val partition1 = new Box(2, 2, 2)
     partition1.setTranslateX(1)
     partition1.setTranslateY(1)
@@ -421,6 +425,8 @@ class Main extends Application {
     worldRoot.getChildren.add(partition1)
     worldRoot.getChildren.add(partition2)
 
+     */
+
     def changePartitionsColor[A](tree:Octree[A]):Any = {
       tree match {
         case OcNode(_, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => {
@@ -435,16 +441,19 @@ class Main extends Application {
         }
         case OcLeaf(section) => {
           val box = getPartition(section.asInstanceOf[Section])
-          if (camVolume.getBoundsInParent.intersects(box.asInstanceOf[Shape3D].getBoundsInParent)) {
-            box.asInstanceOf[Shape3D].setMaterial(whiteMaterial)
+          if (camVolume.getBoundsInParent.intersects(box.asInstanceOf[Box].getBoundsInParent)) {
+            box.asInstanceOf[Box].setMaterial(whiteMaterial)
           }
-          else box.asInstanceOf[Shape3D].setMaterial(blueMaterial)
+          else {
+            box.asInstanceOf[Box].setMaterial(blueMaterial)
+          }
         }
         case OcEmpty =>
       }
     }
 
     def scale(factor:Double) = {
+
       def scaleObjects(x:List[Node]):Any = {
         x match{
           case Nil => Nil
@@ -456,6 +465,7 @@ class Main extends Application {
             y.setScaleX(y.getScaleX*factor)
             y.setScaleY(y.getScaleY*factor)
             y.setScaleZ(y.getScaleZ*factor)
+            println(y.getScaleZ*factor)
           }
             scaleObjects(ys)
         }
@@ -478,6 +488,7 @@ class Main extends Application {
       }
       scaleObjects(getObjects(true))
       oct1 = scaleOcTree()
+      changePartitionsColor(oct1)
     }
 
     //Mouse left click interaction
@@ -485,6 +496,13 @@ class Main extends Application {
       camVolume.setTranslateX(camVolume.getTranslateX + 2)
       //scale(2)
       changePartitionsColor(oct1)
+    })
+
+    scene.setOnKeyPressed(e => {
+      if(e.getCode == KeyCode.UP)
+        scale(2)
+      else if(e.getCode() == KeyCode.DOWN)
+        scale(0.5)
     })
 
     //example of bounding boxes (corresponding to the octree oct1) added manually to the world
