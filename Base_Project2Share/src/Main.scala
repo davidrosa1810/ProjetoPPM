@@ -452,6 +452,7 @@ class Main extends Application {
       }
     }
 
+
     def scale(factor:Double) = {
 
       def scaleObjects(x:List[Node]):Any = {
