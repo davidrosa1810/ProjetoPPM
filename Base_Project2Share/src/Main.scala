@@ -251,21 +251,31 @@ class Main extends Application {
       val placement1: Placement = ((0,0,0),32)
       val oct1:Octree[Placement] = makeNode(placement1,depth) //OcNode[Placement](placement1,makeNode(((0,0,0),placement1._2/2),depth),makeNode(((1,0,0),placement1._2/2),depth),makeNode(((0,1,0),placement1._2/2),depth),makeNode(((1,1,0),placement1._2/2),depth),
         //makeNode(((0,0,1),placement1._2/2),depth),makeNode(((1,0,1),placement1._2/2),depth),makeNode(((0,1,1),placement1._2/2),depth),makeNode(((1,1,1),placement1._2/2),depth))
+      oct1
     }
 
-    def makeNode(placement:Placement, depth:Int):OcNode[Placement] = {
+    def makeNode(placement:Placement, depth:Int):Octree[Placement] = {
       //val placement2 = ((placement._1._1*placement._2/2,placement._1._2*placement._2/2,placement._1._3*placement._2/2),placement._2)
       val box = makeBox(placement)
       if(checkContains(box,getObjects(false))){
         if(depth==0){
-          OcLeaf(placement,getContainedObjects(box,getObjects(false)))
+          OcLeaf(placement,getContainedObjects(box,getObjects(false)):List[Node])
         }
-        else OcNode(placement,makeNode(((0,0,0),placement._2/2),depth-1),makeNode(((1,0,0),placement._2/2),depth-1),makeNode(((0,1,0),placement2._2/2),depth-1),makeNode(((1,1,0),placement2._2/2),depth-1),
-          makeNode(((0,0,1),placement2._2/2),depth-1),makeNode(((1,0,1),placement2._2/2),depth-1),makeNode(((0,1,1),placement2._2/2),depth-1),makeNode(((1,1,1),placement2._2/2),depth-1))
+        else OcNode(placement,
+          makeNode((placement._1,placement._2/2),depth-1),
+          makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3),placement._2/2),depth-1),
+          makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3),placement._2/2),depth-1),
+          makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3),placement._2/2),depth-1),
+          makeNode(((placement._1._1,placement._1._2,placement._1._3+placement._2/2),placement._2/2),depth-1),
+          makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3+placement._2/2),placement._2/2),depth-1),
+          makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),depth-1),
+          makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),depth-1))
       }
-      else
+      else OcEmpty
     }
 
+
+    /*
     def insertTree(depth: Int, t:Octree[Placement],objs:List[Node]):Octree[Placement]={
       t match {
         case OcEmpty => if(depth==0)
@@ -279,6 +289,8 @@ class Main extends Application {
             t
       }
     }
+
+     */
 
 
 
