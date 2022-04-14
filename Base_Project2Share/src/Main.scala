@@ -228,6 +228,16 @@ class Main extends Application {
     }
 
 
+    def maximumDepth(x:Option[Placement]=None):Int = {
+      if(x.nonEmpty){
+        if(calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false))).isEmpty) -1
+        else calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false))).max
+      }
+      else calculateDepth(((0.0,0.0,0.0),32),getObjects(false)).max
+    }
+
+
+
     def checkContains(obj:Node, objs:List[Node]):Boolean = {
       objs match{
         case Nil => false
@@ -251,44 +261,36 @@ class Main extends Application {
     }
 
 
-    def createOctree(depth:Int,objs:List[Node]):Octree[Placement] = {
-      val placement1: Placement = ((0,0,0),32)
-      val oct1:Octree[Placement] = makeNode(placement1,depth) //OcNode[Placement](placement1,makeNode(((0,0,0),placement1._2/2),depth),makeNode(((1,0,0),placement1._2/2),depth),makeNode(((0,1,0),placement1._2/2),depth),makeNode(((1,1,0),placement1._2/2),depth),
-        //makeNode(((0,0,1),placement1._2/2),depth),makeNode(((1,0,1),placement1._2/2),depth),makeNode(((0,1,1),placement1._2/2),depth),makeNode(((1,1,1),placement1._2/2),depth))
-      oct1
+    def createOctree(objs:List[Node],maxLevel:Int=minimumDepth()):Octree[Placement] = {
+        if(maxLevel>maximumDepth()) {
+          println("Profundidade máxima escolhida muito grande!Limite é " + maximumDepth())
+        }
+      val placement1: Placement = ((0, 0, 0), 32)
+      makeNode(placement1,minimumDepth(),maxLevel)
     }
 
-
-
-    def makeNode(placement:Placement, depth:Int):Octree[Placement] = {
+    def makeNode(placement:Placement, depth:Int, maxLevel:Int):Octree[Placement] = {
       val box = makeBox(placement)
       if(checkContains(box,getObjects(false))){
-        if(depth==0){
+        if(depth==0 || maxLevel == 0){
           if(!checkIntersects(camVolume,List(box))) box.setMaterial(blueMaterial)
           worldRoot.getChildren.add(box)
           OcLeaf(placement,getContainedObjects(box,getObjects(false)):List[Node])
         }
         else{
           OcNode(placement,
-            makeNode((placement._1,placement._2/2),minimumDepth(Option(placement._1,placement._2/2))),
-            makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2,placement._1._3),placement._2/2))),
-            makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2+placement._2/2,placement._1._3),placement._2/2))),
-            makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3),placement._2/2))),
-            makeNode(((placement._1._1,placement._1._2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2,placement._1._3+placement._2/2),placement._2/2))),
-            makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2,placement._1._3+placement._2/2),placement._2/2))),
-            makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2))),
-            makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2))))
+            makeNode((placement._1,placement._2/2),minimumDepth(Option(placement._1,placement._2/2)),maxLevel-1),
+            makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2,placement._1._3),placement._2/2)),maxLevel-1),
+            makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2+placement._2/2,placement._1._3),placement._2/2)),maxLevel-1),
+            makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3),placement._2/2)),maxLevel-1),
+            makeNode(((placement._1._1,placement._1._2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2,placement._1._3+placement._2/2),placement._2/2)),maxLevel-1),
+            makeNode(((placement._1._1+placement._2/2,placement._1._2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2,placement._1._3+placement._2/2),placement._2/2)),maxLevel-1),
+            makeNode(((placement._1._1,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2)),maxLevel-1),
+            makeNode(((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2),minimumDepth(Option((placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2),placement._2/2)),maxLevel-1))
         }
       }
       else OcEmpty
     }
-
-
-
-
-
-
-
 
 
 
@@ -394,7 +396,7 @@ class Main extends Application {
      */
 
 
-    var oct1 = createOctree(minimumDepth(),getObjects(false))
+    var oct1 = createOctree(getObjects(false),3)
     println(oct1)
 
     def getPartitions():List[Node] = {
@@ -522,6 +524,7 @@ class Main extends Application {
     b3.setTranslateZ(4/2)
     b3.setMaterial(redMaterial)
     b3.setDrawMode(DrawMode.LINE)
+
   }
 
   override def init(): Unit = {
