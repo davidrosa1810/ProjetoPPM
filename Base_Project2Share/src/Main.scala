@@ -249,7 +249,9 @@ class Main extends Application {
         if(calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false),Nil)).isEmpty) -1
         else calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false),Nil)).min
       }
-      else calculateDepth(((0.0,0.0,0.0),32),getObjects(false)).min
+      else
+        if(calculateDepth(((0.0,0.0,0.0),32),getObjects(false)).isEmpty) -1
+        else calculateDepth(((0.0,0.0,0.0),32),getObjects(false)).min
     }
 
 
