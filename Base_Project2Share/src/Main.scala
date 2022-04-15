@@ -9,8 +9,10 @@ import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.scene.{PerspectiveCamera, Scene, SceneAntialiasing, SubScene}
 import javafx.scene.input._
-import scala.collection.JavaConverters._
 
+import java.io._
+import scala.annotation.tailrec
+import scala.collection.JavaConverters._
 import scala.io.Source
 
 
@@ -25,6 +27,8 @@ class Main extends Application {
   //Shape3D is an abstract class that extends javafx.scene.Node
   //Box and Cylinder are subclasses of Shape3D
   type Section = (Placement, List[Node])  //example: ( ((0.0,0.0,0.0), 2.0), List(new Cylinder(0.5, 1, 10)))
+
+
 
 
   /*
@@ -73,32 +77,58 @@ class Main extends Application {
     wiredBox.setMaterial(redMaterial)
     wiredBox.setDrawMode(DrawMode.LINE)
 
-    /* val cylinder2 = new Cylinder(0.5, 1, 10)
-    cylinder2.setTranslateX(5)
-    cylinder2.setTranslateY(2)
-    cylinder2.setTranslateZ(2)
-    cylinder2.setScaleX(5)
-    cylinder2.setScaleY(5)
-    cylinder2.setScaleZ(5)
-    cylinder2.setMaterial(redMaterial) */
-
-    /* val cylinder1 = new Cylinder(0.5, 1, 10)
-    cylinder1.setTranslateX(2)
-    cylinder1.setTranslateY(2)
-    cylinder1.setTranslateZ(2)
-    cylinder1.setScaleX(2)
-    cylinder1.setScaleY(2)
-    cylinder1.setScaleZ(2)
-    cylinder1.setMaterial(greenMaterial)
-
-    val box1 = new Box(1, 1, 1)
-    box1.setTranslateX(5)
-    box1.setTranslateY(5)
-    box1.setTranslateZ(5)
-    box1.setMaterial(greenMaterial) */
 
     // 3D objects (group of nodes - javafx.scene.Node) that will be provide to the subScene
     val worldRoot:Group = new Group(wiredBox, camVolume, lineX, lineY, lineZ)
+
+    // Camera
+    val camera = new PerspectiveCamera(true)
+
+    val cameraTransform = new CameraTransformer
+    cameraTransform.setTranslate(0, 0, 0)
+    cameraTransform.getChildren.add(camera)
+    camera.setNearClip(0.1)
+    camera.setFarClip(10000.0)
+
+    camera.setTranslateZ(-500)
+    camera.setFieldOfView(20)
+    cameraTransform.ry.setAngle(-45.0)
+    cameraTransform.rx.setAngle(-45.0)
+    worldRoot.getChildren.add(cameraTransform)
+
+    // SubScene - composed by the nodes present in the worldRoot
+    val subScene = new SubScene(worldRoot, 800, 600, true, SceneAntialiasing.BALANCED)
+    subScene.setFill(Color.DARKSLATEGRAY)
+    subScene.setCamera(camera)
+
+    // CameraView - an additional perspective of the environment
+    val cameraView = new CameraView(subScene)
+    cameraView.setFirstPersonNavigationEabled(true)
+    cameraView.setFitWidth(350)
+    cameraView.setFitHeight(225)
+    cameraView.getRx.setAngle(-45)
+    cameraView.getT.setZ(-100)
+    cameraView.getT.setY(-500)
+    cameraView.getCamera.setTranslateZ(-50)
+    cameraView.startViewing
+
+    // Position of the CameraView: Right-bottom corner
+    StackPane.setAlignment(cameraView, Pos.BOTTOM_RIGHT)
+    StackPane.setMargin(cameraView, new Insets(5))
+
+    // Scene - defines what is rendered (in this case the subScene and the cameraView)
+    val root = new StackPane(subScene, cameraView)
+    subScene.widthProperty.bind(root.widthProperty)
+    subScene.heightProperty.bind(root.heightProperty)
+
+    val scene = new Scene(root, 810, 610, true, SceneAntialiasing.BALANCED)
+
+
+    //setup and start the Stage
+    stage.setTitle("PPM Project 21/22")
+    stage.setScene(scene)
+    stage.show
+
 
     def checkIntersects(obj:Node,objs:List[Node]):Boolean = {
       objs match{
@@ -174,7 +204,6 @@ class Main extends Application {
       box.setTranslateZ(plac._2 / 2 + plac._1._3)
       box.setDrawMode(DrawMode.LINE)
       box.setMaterial(whiteMaterial)
-      //worldRoot.getChildren.add(box)
       box
     }
 
@@ -197,13 +226,10 @@ class Main extends Application {
         case Nil => 0
         case x::xs => {
           if(x.getBoundsInParent.contains(node.getBoundsInParent)) {
-            println(x + " contem " + node + " no nivel " + i)
             val placement = ((x.getTranslateX-x.getWidth/2,x.getTranslateY-x.getWidth/2,x.getTranslateZ-x.getWidth/2),x.getWidth)
-            println(placement)
             depth(node,i+1,caixinhasMagicas(placement))
           }
           else if(x.getBoundsInParent.intersects(node.getBoundsInParent)){
-            println(x + " interseta " + node + " no nivel " + i)
             i
           }
           else depth(node,i,xs)
@@ -212,7 +238,6 @@ class Main extends Application {
     }
 
     def calculateDepth(placement:Placement,objs:List[Node]):List[Int] = {
-      println(objs)
       objs match{
         case Nil => Nil
         case x::xs => depth(x,0,caixinhasMagicas(placement))::calculateDepth(placement,xs)
@@ -221,8 +246,8 @@ class Main extends Application {
 
     def minimumDepth(x:Option[Placement]=None):Int = {
       if(x.nonEmpty){
-        if(calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false))).isEmpty) -1
-        else calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false))).min
+        if(calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false),Nil)).isEmpty) -1
+        else calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false),Nil)).min
       }
       else calculateDepth(((0.0,0.0,0.0),32),getObjects(false)).min
     }
@@ -230,8 +255,8 @@ class Main extends Application {
 
     def maximumDepth(x:Option[Placement]=None):Int = {
       if(x.nonEmpty){
-        if(calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false))).isEmpty) -1
-        else calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false))).max
+        if(calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false),Nil)).isEmpty) -1
+        else calculateDepth(x.get,getContainedObjects(makeBox(x.get),getObjects(false),Nil)).max
       }
       else calculateDepth(((0.0,0.0,0.0),32),getObjects(false)).max
     }
@@ -250,21 +275,19 @@ class Main extends Application {
       }
     }
 
-    def getContainedObjects(obj:Node, objs:List[Node]):List[Node] = {
+    @tailrec
+    def getContainedObjects(obj:Node, objs:List[Node], objs2:List[Node]):List[Node] = {
       objs match{
-        case Nil => Nil
+        case Nil => objs2
         case y::ys => {
-          if(obj.getBoundsInParent.contains(y.asInstanceOf[Shape3D].getBoundsInParent)) y::getContainedObjects(obj,ys)
-          else getContainedObjects(obj,ys)
+          if(obj.getBoundsInParent.contains(y.asInstanceOf[Shape3D].getBoundsInParent)) getContainedObjects(obj,ys,y::objs2)
+          else getContainedObjects(obj,ys,objs2)
         }
       }
     }
 
 
-    def createOctree(objs:List[Node],maxLevel:Int=minimumDepth()):Octree[Placement] = {
-        if(maxLevel>maximumDepth()) {
-          println("Profundidade máxima escolhida muito grande!Limite é " + maximumDepth())
-        }
+    def createOctree(maxLevel:Int=minimumDepth()):Octree[Placement] = {
       val placement1: Placement = ((0, 0, 0), 32)
       makeNode(placement1,minimumDepth(),maxLevel)
     }
@@ -275,7 +298,7 @@ class Main extends Application {
         if(depth==0 || maxLevel == 0){
           if(!checkIntersects(camVolume,List(box))) box.setMaterial(blueMaterial)
           worldRoot.getChildren.add(box)
-          OcLeaf(placement,getContainedObjects(box,getObjects(false)):List[Node])
+          OcLeaf(placement,getContainedObjects(box,getObjects(false),Nil):List[Node])
         }
         else{
           OcNode(placement,
@@ -293,141 +316,17 @@ class Main extends Application {
     }
 
 
+    //é aqui que se poe o limite de profundidade da octree
+    var oct1 = createOctree(2)
 
 
-/*
-    def makeOctree() = {
-      val objects = getObjects(false)
-      val placement1: Placement = ((0, 0, 0), 32.0)
-      val oct1:Octree[Placement] = OcNode[Placement](placement1,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty,OcEmpty)
-
-
-      def recursiveFunction(papa:Node,granpapa:Node,box:Box) = {
-
-      }
-      def makeBox(plac:Placement):Box = {
-        val box = new Box(plac._2, plac._2, plac._2)
-        box.setTranslateX(plac._2 / 2 + plac._1._1)
-        box.setTranslateY(plac._2 / 2 + plac._1._2)
-        box.setTranslateZ(plac._2 / 2 + plac._1._3)
-        box.setDrawMode(DrawMode.LINE)
-        box
-      }
-      def checkContains(obj:Node, objs:List[Node]):Boolean = {
-        objs match{
-          case Nil => false
-          case y::ys => {
-            if(obj.getBoundsInParent.contains(y.asInstanceOf[Shape3D].getBoundsInParent)) {
-              true
-            }
-            else checkContains(obj,ys)
-          }
-        }
-      }
-
-
-      caixinhasMagicas(placement1)
-      println(objects)
-    } */
-
-
-    //createOctree(minimumDepth(),getObjects(false))
-
-    // Camera
-    val camera = new PerspectiveCamera(true)
-
-    val cameraTransform = new CameraTransformer
-    cameraTransform.setTranslate(0, 0, 0)
-    cameraTransform.getChildren.add(camera)
-    camera.setNearClip(0.1)
-    camera.setFarClip(10000.0)
-
-    camera.setTranslateZ(-500)
-    camera.setFieldOfView(20)
-    cameraTransform.ry.setAngle(-45.0)
-    cameraTransform.rx.setAngle(-45.0)
-    worldRoot.getChildren.add(cameraTransform)
-
-    // SubScene - composed by the nodes present in the worldRoot
-    val subScene = new SubScene(worldRoot, 800, 600, true, SceneAntialiasing.BALANCED)
-    subScene.setFill(Color.DARKSLATEGRAY)
-    subScene.setCamera(camera)
-
-    // CameraView - an additional perspective of the environment
-    val cameraView = new CameraView(subScene)
-    cameraView.setFirstPersonNavigationEabled(true)
-    cameraView.setFitWidth(350)
-    cameraView.setFitHeight(225)
-    cameraView.getRx.setAngle(-45)
-    cameraView.getT.setZ(-100)
-    cameraView.getT.setY(-500)
-    cameraView.getCamera.setTranslateZ(-50)
-    cameraView.startViewing
-
-      // Position of the CameraView: Right-bottom corner
-      StackPane.setAlignment(cameraView, Pos.BOTTOM_RIGHT)
-      StackPane.setMargin(cameraView, new Insets(5))
-
-    // Scene - defines what is rendered (in this case the subScene and the cameraView)
-    val root = new StackPane(subScene, cameraView)
-    subScene.widthProperty.bind(root.widthProperty)
-    subScene.heightProperty.bind(root.heightProperty)
-
-    val scene = new Scene(root, 810, 610, true, SceneAntialiasing.BALANCED)
-
-
-
-    //setup and start the Stage
-    stage.setTitle("PPM Project 21/22")
-    stage.setScene(scene)
-    stage.show
-
-
-    //oct1 - example of an Octree[Placement] that contains only one Node (i.e. cylinder1)
-    //In case of difficulties to implement task T2 this octree can be used as input for tasks T3, T4 and T5
-
-    /*
-    val placement1: Placement = ((0, 0, 0), 8.0)
-    val sec1: Section = (((0.0,0.0,0.0), 2.0), List())
-    val ocLeaf1 = OcLeaf(sec1)
-    var oct1:Octree[Placement] = OcNode[Placement](placement1, ocLeaf1, OcLeaf(((2.0,0.0,0.0),2.0), Nil), OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty, OcEmpty)
-
-
-     */
-
-
-    var oct1 = createOctree(getObjects(false),3)
-    println(oct1)
-
-    def getPartitions():List[Node] = {
-      val list = worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE && x.asInstanceOf[Box].getMaterial!=redMaterial)
-      println(list)
-      list
-    }
     def getPartition(sec:Section):Node = {
       val translations = (sec._1._1._1+sec._1._2/2, sec._1._1._2+sec._1._2/2, sec._1._1._3+sec._1._2/2)
-      val box = getPartitions.filter(x=>x.asInstanceOf[Box].getTranslateX==translations._1 && x.asInstanceOf[Box].getTranslateY==translations._2 && x.asInstanceOf[Box].getTranslateZ==translations._3).head
-      println(box)
+      val list = worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE && x.asInstanceOf[Box].getMaterial!=redMaterial)
+      val box = list.filter(x=>x.asInstanceOf[Box].getTranslateX==translations._1 && x.asInstanceOf[Box].getTranslateY==translations._2 && x.asInstanceOf[Box].getTranslateZ==translations._3).head
       box
     }
 
-    /*
-    val partition1 = new Box(2, 2, 2)
-    partition1.setTranslateX(1)
-    partition1.setTranslateY(1)
-    partition1.setTranslateZ(1)
-    partition1.setMaterial(greenMaterial)
-    partition1.setDrawMode(DrawMode.LINE)
-    val partition2 = new Box(2, 2, 2)
-    partition2.setTranslateX(3)
-    partition2.setTranslateY(1)
-    partition2.setTranslateZ(1)
-    partition2.setMaterial(greenMaterial)
-    partition2.setDrawMode(DrawMode.LINE)
-    worldRoot.getChildren.add(partition1)
-    worldRoot.getChildren.add(partition2)
-
-     */
 
     def changePartitionsColor[A](tree:Octree[A]):Any = {
       tree match {
@@ -468,7 +367,6 @@ class Main extends Application {
             y.setScaleX(y.getScaleX*factor)
             y.setScaleY(y.getScaleY*factor)
             y.setScaleZ(y.getScaleZ*factor)
-            println(y.getScaleZ*factor)
           }
             scaleObjects(ys)
         }
@@ -494,11 +392,18 @@ class Main extends Application {
       changePartitionsColor(oct1)
     }
 
+    def writeToFile(file: String) = {
+      val pw = new PrintWriter(new File(file))
+      pw.write(oct1.toString)
+      pw.close
+    }
+
+
     //Mouse left click interaction
     scene.setOnMouseClicked((event) => {
       camVolume.setTranslateX(camVolume.getTranslateX + 2)
-      //scale(2)
       changePartitionsColor(oct1)
+      writeToFile("output.txt")
     })
 
     scene.setOnKeyPressed(e => {
@@ -508,22 +413,6 @@ class Main extends Application {
         scale(0.5)
     })
 
-    //example of bounding boxes (corresponding to the octree oct1) added manually to the world
-    val b2 = new Box(8,8,8)
-    //translate because it is added by defaut to the coords (0,0,0)
-    b2.setTranslateX(8/2)
-    b2.setTranslateY(8/2)
-    b2.setTranslateZ(8/2)
-    b2.setMaterial(redMaterial)
-    b2.setDrawMode(DrawMode.LINE)
-
-    val b3 = new Box(4,4,4)
-    //translate because it is added by defaut to the coords (0,0,0)
-    b3.setTranslateX(4/2)
-    b3.setTranslateY(4/2)
-    b3.setTranslateZ(4/2)
-    b3.setMaterial(redMaterial)
-    b3.setDrawMode(DrawMode.LINE)
 
   }
 
