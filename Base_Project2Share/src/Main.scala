@@ -297,9 +297,9 @@ class Main extends Application {
     def makeNode(placement:Placement, depth:Int, maxLevel:Int):Octree[Placement] = {
       val box = makeBox(placement)
       if(checkContains(box,getObjects(false))){
+        if(!checkIntersects(camVolume,List(box))) box.setMaterial(blueMaterial)
+        worldRoot.getChildren.add(box)
         if(depth==0 || maxLevel == 0){
-          if(!checkIntersects(camVolume,List(box))) box.setMaterial(blueMaterial)
-          worldRoot.getChildren.add(box)
           OcLeaf(placement,getContainedObjects(box,getObjects(false),Nil):List[Node])
         }
         else{
@@ -322,8 +322,8 @@ class Main extends Application {
     var oct1 = createOctree(2)
 
 
-    def getPartition(sec:Section):Node = {
-      val translations = (sec._1._1._1+sec._1._2/2, sec._1._1._2+sec._1._2/2, sec._1._1._3+sec._1._2/2)
+    def getPartition(placement:Placement):Node = {
+      val translations = (placement._1._1+placement._2/2,placement._1._2+placement._2/2,placement._1._3+placement._2/2)
       val list = worldRoot.getChildren.asScala.toList.filter(x=>x.isInstanceOf[Box] && x.asInstanceOf[Box].getDrawMode==DrawMode.LINE && x.asInstanceOf[Box].getMaterial!=redMaterial)
       val box = list.filter(x=>x.asInstanceOf[Box].getTranslateX==translations._1 && x.asInstanceOf[Box].getTranslateY==translations._2 && x.asInstanceOf[Box].getTranslateZ==translations._3).head
       box
@@ -332,7 +332,14 @@ class Main extends Application {
 
     def changePartitionsColor[A](tree:Octree[A]):Any = {
       tree match {
-        case OcNode(_, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => {
+        case OcNode(plac, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => {
+          val box = getPartition(plac.asInstanceOf[Placement])
+          if (camVolume.getBoundsInParent.intersects(box.asInstanceOf[Box].getBoundsInParent)) {
+            box.asInstanceOf[Box].setMaterial(whiteMaterial)
+          }
+          else {
+            box.asInstanceOf[Box].setMaterial(blueMaterial)
+          }
           changePartitionsColor[A](up_00)
           changePartitionsColor[A](up_01)
           changePartitionsColor[A](up_10)
@@ -343,7 +350,7 @@ class Main extends Application {
           changePartitionsColor[A](down_11)
         }
         case OcLeaf(section) => {
-          val box = getPartition(section.asInstanceOf[Section])
+          val box = getPartition(section.asInstanceOf[Section]._1)
           if (camVolume.getBoundsInParent.intersects(box.asInstanceOf[Box].getBoundsInParent)) {
             box.asInstanceOf[Box].setMaterial(whiteMaterial)
           }
@@ -394,26 +401,84 @@ class Main extends Application {
       changePartitionsColor(oct1)
     }
 
+
+    def mapColourEffect(corezinhas: Color => Color, oct:Octree[Placement]):Octree[Placement]= {
+      oct match{
+        case OcNode(placement, up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11)=>{
+          val box = getPartition(placement.asInstanceOf[Placement])
+          val material = new PhongMaterial()
+          material.setDiffuseColor(corezinhas(box.asInstanceOf[Box].getMaterial.asInstanceOf[PhongMaterial].getDiffuseColor))
+          box.asInstanceOf[Box].setMaterial(material)
+          OcNode(placement, mapColourEffect(corezinhas, up_00),
+          mapColourEffect(corezinhas, up_01),
+          mapColourEffect(corezinhas, up_10),
+          mapColourEffect(corezinhas, up_11),
+          mapColourEffect(corezinhas, down_00),
+          mapColourEffect(corezinhas, down_01),
+          mapColourEffect(corezinhas, down_10),
+          mapColourEffect(corezinhas, down_11))
+        }
+
+
+        case OcLeaf(section) => {
+          val box = getPartition(section.asInstanceOf[Section]._1)
+          val material = new PhongMaterial()
+          material.setDiffuseColor(corezinhas(box.asInstanceOf[Box].getMaterial.asInstanceOf[PhongMaterial].getDiffuseColor))
+          box.asInstanceOf[Box].setMaterial(material)
+          section.asInstanceOf[Section]._2.map(a => {
+            val phongMaterial = new PhongMaterial()
+            phongMaterial.setDiffuseColor(corezinhas(a.asInstanceOf[Shape3D].getMaterial.asInstanceOf[PhongMaterial].getDiffuseColor))
+            a.asInstanceOf[Shape3D].setMaterial(phongMaterial)
+          })
+          oct
+        }
+        case OcEmpty => oct
+
+      }
+    }
+
+    def sepia(color: Color):Color={
+      val r = if((color.getRed*255*0.4 + color.getGreen*255*0.77 +  color.getBlue*255*0.2)<255)
+        color.getRed*255*0.4 + color.getGreen*255*0.77 +  color.getBlue*255*0.2 else 255
+      val g = if((color.getRed*255*0.35 + color.getGreen*255*0.69 +  color.getBlue*255*0.17)<255)
+        color.getRed*255*0.35 + color.getGreen*255*0.69 +  color.getBlue*255*0.17 else 255
+      val b = if((color.getRed*255*0.27 + color.getGreen*255*0.53 +  color.getBlue*255*0.13)<255)
+        color.getRed*255*0.27 + color.getGreen*255*0.53 +  color.getBlue*255*0.13 else 255
+      Color.rgb(r.toInt,g.toInt,b.toInt)
+    }
+
+    def greenRemove(color: Color): Color ={
+ //     println(color.getRed*255.toInt + " " + color.getBlue*255.toInt)
+ //     println("")
+      Color.rgb((color.getRed*255).toInt,0, (color.getBlue*255).toInt)
+    }
+
+ //   println(oct1)
+ //   println("")
+    val octt = mapColourEffect(greenRemove,oct1)
+ //   println(octt)
+
     def writeToFile(file: String) = {
       val pw = new PrintWriter(new File(file))
       pw.write(oct1.toString)
       pw.close
     }
 
+      scene.setOnMouseClicked((event) => {
+        camVolume.setTranslateX(camVolume.getTranslateX + 2)
+        changePartitionsColor(oct1)
+        writeToFile("output.txt")
+      })
 
-    //Mouse left click interaction
-    scene.setOnMouseClicked((event) => {
-      camVolume.setTranslateX(camVolume.getTranslateX + 2)
-      changePartitionsColor(oct1)
-      writeToFile("output.txt")
-    })
+      scene.setOnKeyPressed(e => {
+        if(e.getCode == KeyCode.UP)
+          scale(2)
+        else if(e.getCode() == KeyCode.DOWN)
+          scale(0.5)
+      })
 
-    scene.setOnKeyPressed(e => {
-      if(e.getCode == KeyCode.UP)
-        scale(2)
-      else if(e.getCode() == KeyCode.DOWN)
-        scale(0.5)
-    })
+
+
 
 
   }
