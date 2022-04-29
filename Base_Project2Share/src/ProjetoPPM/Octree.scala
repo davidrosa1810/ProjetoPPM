@@ -1,3 +1,5 @@
+package ProjetoPPM
+
 sealed trait Octree[+A]
 
 case class OcNode[A](coords: A,
@@ -10,6 +12,3 @@ case class OcNode[A](coords: A,
 case class OcLeaf[A, B](section: B) extends Octree[A]
 
 case object OcEmpty extends Octree[Nothing]
-
-
-

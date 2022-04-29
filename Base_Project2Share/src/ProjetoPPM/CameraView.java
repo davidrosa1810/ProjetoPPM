@@ -1,5 +1,5 @@
-/**
- * CameraView.java
+package ProjetoPPM; /**
+ * ProjetoPPM.CameraView.java
  *
  * Copyright (c) 2013-2016, F(X)yz
  * All rights reserved.
