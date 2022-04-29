@@ -28,8 +28,7 @@ object GroupUsers {
     else calculateDepth(x,getContainedObjects(makeBox(x),getObjects(false,group),Nil)).min
   }
 
-  def createOctree(maxLevel:Option[Int],group:Group):Octree[Placement] = {
-    val placement1: Placement = ((0, 0, 0), 32)
+  def createOctree(maxLevel:Option[Int],group:Group,placement1:Placement=((0, 0, 0), 32)):Octree[Placement] = {
     if(maxLevel.nonEmpty)
       makeNode(placement1,minimumDepth(placement1,group),maxLevel.get,group)
     else makeNode(placement1,minimumDepth(placement1,group),minimumDepth(placement1,group),group)

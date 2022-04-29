@@ -21,10 +21,6 @@ object Pure{
     }
   }
 
-
-
-
-
   def makeBox(plac:Placement):Box = {
     val box = new Box(plac._2, plac._2, plac._2)
     box.setTranslateX(plac._2 / 2 + plac._1._1)
@@ -133,6 +129,14 @@ object Pure{
 
   def greenRemove(color: Color): Color ={
     Color.rgb((color.getRed*255).toInt,0, (color.getBlue*255).toInt)
+  }
+
+  def octreeToList(oct:Octree[Placement]):List[Placement] = {
+    oct match{
+      case OcEmpty => Nil
+      case OcLeaf(section) => section.asInstanceOf[Section]._1 :: Nil
+      case OcNode(placement,up_00, up_01, up_10, up_11, down_00, down_01, down_10, down_11) => placement::octreeToList(up_00):::octreeToList(up_01):::octreeToList(up_10):::octreeToList(up_11):::octreeToList(down_00):::octreeToList(down_01):::octreeToList(down_10):::octreeToList(down_11)
+    }
   }
 
 }

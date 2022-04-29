@@ -7,14 +7,17 @@ import javafx.scene.input._
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.stage.Stage
-
 import Pure._
 import GroupUsers._
 import Configs._
 import IOUtils._
 
+import scala.io.StdIn.readLine
+
 
 class Main extends Application {
+
+  var oct1:Octree[Placement] = OcEmpty
   /*
     Additional information about JavaFX basic concepts (e.g. Stage, Scene) will be provided in week7
    */
@@ -80,27 +83,42 @@ class Main extends Application {
     readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/Base_Project2Share/configs.txt",wiredBox,worldRoot)
 
     //é aqui que se poe o limite de profundidade da octree
-    var oct1 = createOctree(Some(2),worldRoot)
+    oct1 = createOctree(Some(2),worldRoot)
 
     mapColourEffect(greenRemove,oct1)
 
 
       scene.setOnMouseClicked((event) => {
         camVolume.setTranslateX(camVolume.getTranslateX + 2)
+        writeToFile("output.txt",oct1,worldRoot)
         changePartitionsColor(oct1,worldRoot)
-        writeToFile("output.txt",oct1)
       })
 
       scene.setOnKeyPressed(e => {
+        if(e.getCode == KeyCode.ENTER) {
+          val t = readLine()
+          if(t.toInt == 0) {
+            stage.close()
+            stage.show()
+            start(stage)
+          } else stage.show()
+        }
         if(e.getCode == KeyCode.UP)
           oct1 = scaleOctree(2,oct1,worldRoot)
         else if(e.getCode() == KeyCode.DOWN)
           oct1 = scaleOctree(0.5,oct1,worldRoot)
       })
+
+    println(octreeToList(oct1))
+    makeOctreeFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/output2.txt")
   }
 
   override def init(): Unit = {
     println("init")
+    println("Prima + para aumentar o scale")
+    println("Prima - para diminuir o scale")
+    println("Clique no rato para mover a camara")
+
   }
 
   override def stop(): Unit = {
