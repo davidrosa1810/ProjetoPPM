@@ -16,7 +16,6 @@ object Configs {
   //Box and Cylinder are subclasses of Shape3D
   type Section = (Placement, List[Node])  //example: ( ((0.0,0.0,0.0), 2.0), List(new Cylinder(0.5, 1, 10)))
 
-
   val whiteMaterial = new PhongMaterial()
   whiteMaterial.setDiffuseColor(Color.rgb(255,255,255))
 

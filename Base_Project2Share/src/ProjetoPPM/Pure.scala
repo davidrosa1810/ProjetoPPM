@@ -11,7 +11,8 @@ import Configs._
 
 object Pure{
 
-  def checkIntersects(obj:Node,objs:List[Node]):Boolean = {
+  @tailrec
+  def checkIntersects(obj:Node, objs:List[Node]):Boolean = {
     objs match{
       case Nil => false
       case y::ys =>{
@@ -44,7 +45,8 @@ object Pure{
     part1::part2::part3::part4::part5::part6::part7::part8::Nil
   }
 
-  def depth(node:Node,i:Int,caixas:List[Box]):Int = {
+  @tailrec
+  def depth(node:Node, i:Int, caixas:List[Box]):Int = {
     caixas match{
       case Nil => 0
       case x::xs => {
@@ -67,6 +69,7 @@ object Pure{
     }
   }
 
+  @tailrec
   def checkContains(obj:Node, objs:List[Node]):Boolean = {
     objs match{
       case Nil => false

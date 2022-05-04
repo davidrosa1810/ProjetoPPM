@@ -2,10 +2,14 @@ package ProjetoPPM
 
 import javafx.scene.{Group, Node}
 import javafx.scene.shape.{Box, Cylinder, DrawMode}
-import scala.jdk.CollectionConverters._
 
+import scala.jdk.CollectionConverters._
 import Configs._
+import ProjetoPPM.IOUtils.writeToFile
 import Pure._
+
+import scala.annotation.tailrec
+import scala.io.StdIn.readLine
 
 
 object GroupUsers {
@@ -23,15 +27,22 @@ object GroupUsers {
     objects
   }
 
+  def maximumDepth(x:Placement,group:Group):Int = {
+      if(calculateDepth(x,getContainedObjects(makeBox(x),getObjects(false,group),Nil)).isEmpty) -1
+      else calculateDepth(x,getContainedObjects(makeBox(x),getObjects(false,group),Nil)).max
+  }
+
   def minimumDepth(x:Placement,group:Group):Int = {
     if(calculateDepth(x,getContainedObjects(makeBox(x),getObjects(false,group),Nil)).isEmpty) -1
     else calculateDepth(x,getContainedObjects(makeBox(x),getObjects(false,group),Nil)).min
   }
 
-  def createOctree(maxLevel:Option[Int],group:Group,placement1:Placement=((0, 0, 0), 32)):Octree[Placement] = {
-    if(maxLevel.nonEmpty)
+  def createOctree(group:Group,placement1:Placement=((0, 0, 0), 32),maxLevel:Option[Int]):Octree[Placement] = {
+    if(maxLevel != null)
       makeNode(placement1,minimumDepth(placement1,group),maxLevel.get,group)
-    else makeNode(placement1,minimumDepth(placement1,group),minimumDepth(placement1,group),group)
+    else {
+      makeNode(placement1,minimumDepth(placement1,group),maximumDepth(placement1,group),group)
+    }
   }
 
   def makeNode(placement:Placement, depth:Int, maxLevel:Int, group:Group):Octree[Placement] = {
@@ -98,7 +109,7 @@ object GroupUsers {
   }
 
   def scaleOctree(fact:Double, oct:Octree[Placement], group:Group):Octree[Placement] = {
-
+    @tailrec
     def scaleObjects(x:List[Node]):Any = {
       x match{
         case Nil => Nil
@@ -136,4 +147,24 @@ object GroupUsers {
     tree
   }
 
+  @tailrec
+  def menu(tree:Octree[Placement], group:Group):Octree[Placement] = {
+    println("Escolha uma opção")
+    println("1-Scale2X" + "\n" +
+      "2-Scale0.5X" + "\n" +
+      "3-Sépia" + "\n" +
+      "4-GreenRemove" + "\n" +
+      "5-Abrir janela de visualização")
+    val option = readLine
+    option.toInt match{
+      case 1 => menu(scaleOctree(2,tree,group),group)
+      case 2 => menu(scaleOctree(0.5,tree,group),group)
+      case 3 => menu(mapColourEffect(sepia,tree),group)
+      case 4 => menu(mapColourEffect(greenRemove,tree),group)
+      case 5 => writeToFile("output.txt",tree,group)
+        tree
+      case _ => println("Opção inválida, escolha um número de 1 a 5")
+        menu(tree,group)
+    }
+  }
 }

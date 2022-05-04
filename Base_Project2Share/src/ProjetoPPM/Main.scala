@@ -3,7 +3,6 @@ package ProjetoPPM
 import javafx.application.Application
 import javafx.geometry.{Insets, Pos}
 import javafx.scene._
-import javafx.scene.input._
 import javafx.scene.layout.StackPane
 import javafx.scene.paint.Color
 import javafx.stage.Stage
@@ -11,13 +10,14 @@ import Pure._
 import GroupUsers._
 import Configs._
 import IOUtils._
+import javafx.scene.input.KeyCode
 
-import scala.io.StdIn.readLine
+import scala.annotation.tailrec
+import scala.io.StdIn.{readInt, readLine}
 
 
 class Main extends Application {
 
-  var oct1:Octree[Placement] = OcEmpty
   /*
     Additional information about JavaFX basic concepts (e.g. Stage, Scene) will be provided in week7
    */
@@ -28,7 +28,9 @@ class Main extends Application {
     println("Program arguments:" + params.getRaw)
 
     // 3D objects (group of nodes - javafx.scene.Node) that will be provide to the subScene
-    val worldRoot:Group = new Group(wiredBox, camVolume, lineX, lineY, lineZ)
+    val worldRoot:Group = new Group(camVolume, lineX, lineY, lineZ)
+
+    val oct1 = menu(fileLoader(worldRoot),worldRoot)
 
     // Camera
     val camera = new PerspectiveCamera(true)
@@ -72,59 +74,35 @@ class Main extends Application {
 
     val scene = new Scene(root, 810, 610, true, SceneAntialiasing.BALANCED)
 
-
     //setup and start the Stage
     stage.setTitle("PPM Project 21/22")
     stage.setScene(scene)
     stage.show
 
-
-
-    readFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/Base_Project2Share/configs.txt",wiredBox,worldRoot)
-
-    //é aqui que se poe o limite de profundidade da octree
-    oct1 = createOctree(Some(2),worldRoot)
-
-    mapColourEffect(greenRemove,oct1)
-
-
-      scene.setOnMouseClicked((event) => {
-        camVolume.setTranslateX(camVolume.getTranslateX + 2)
-        writeToFile("output.txt",oct1,worldRoot)
+      scene.setOnKeyPressed(e => {
+        if(e.getCode == KeyCode.UP){
+          camVolume.setTranslateZ(camVolume.getTranslateZ + 2)
+        }
+        else if(e.getCode == KeyCode.DOWN){
+          camVolume.setTranslateZ(camVolume.getTranslateZ - 2)
+        }
+        else if(e.getCode == KeyCode.LEFT){
+          camVolume.setTranslateX(camVolume.getTranslateX - 2)
+        }
+        else if(e.getCode == KeyCode.RIGHT){
+          camVolume.setTranslateX(camVolume.getTranslateX + 2)
+        }
         changePartitionsColor(oct1,worldRoot)
       })
-
-      scene.setOnKeyPressed(e => {
-        if(e.getCode == KeyCode.ENTER) {
-          val t = readLine()
-          if(t.toInt == 0) {
-            stage.close()
-            stage.show()
-            start(stage)
-          } else stage.show()
-        }
-        if(e.getCode == KeyCode.UP)
-          oct1 = scaleOctree(2,oct1,worldRoot)
-        else if(e.getCode() == KeyCode.DOWN)
-          oct1 = scaleOctree(0.5,oct1,worldRoot)
-      })
-
-    println(octreeToList(oct1))
-    makeOctreeFromFile(s"${System.getProperty("user.home")}/IdeaProjects/ProjetoPPM/output2.txt")
   }
 
   override def init(): Unit = {
     println("init")
-    println("Prima + para aumentar o scale")
-    println("Prima - para diminuir o scale")
-    println("Clique no rato para mover a camara")
-
   }
 
   override def stop(): Unit = {
     println("stopped")
   }
-
 }
 
 object FxApp {
