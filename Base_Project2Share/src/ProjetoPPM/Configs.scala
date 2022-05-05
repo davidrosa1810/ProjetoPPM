@@ -1,6 +1,6 @@
 package ProjetoPPM
 
-import javafx.scene.Node
+import javafx.scene.{Node, PerspectiveCamera}
 import javafx.scene.paint.{Color, PhongMaterial}
 import javafx.scene.shape.{Box, Cylinder, DrawMode, Line}
 import javafx.scene.transform.Rotate
@@ -50,4 +50,18 @@ object Configs {
   wiredBox.setTranslateZ(16)
   wiredBox.setMaterial(redMaterial)
   wiredBox.setDrawMode(DrawMode.LINE)
+
+
+  val camera = new PerspectiveCamera(true)
+
+  val cameraTransform = new CameraTransformer
+  cameraTransform.setTranslate(0, 0, 0)
+  cameraTransform.getChildren.add(camera)
+  camera.setNearClip(0.1)
+  camera.setFarClip(10000.0)
+
+  camera.setTranslateZ(-500)
+  camera.setFieldOfView(20)
+  cameraTransform.ry.setAngle(-45.0)
+  cameraTransform.rx.setAngle(-45.0)
 }
