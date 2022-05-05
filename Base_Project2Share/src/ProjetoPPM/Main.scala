@@ -17,6 +17,9 @@ import scala.annotation.tailrec
 import scala.io.StdIn.{readInt, readLine}
 
 
+import javafx.geometry.Pos
+import javafx.scene.layout.StackPane
+
 class Main extends Application {
 
   /*
@@ -53,6 +56,8 @@ class Main extends Application {
 
       worldRoot.getChildren.add(cameraTransform)
 
+
+
       // Scene - defines what is rendered (in this case the subScene and the cameraView)
       val root = new StackPane(subScene, cameraView)
       subScene.widthProperty.bind(root.widthProperty)
@@ -85,11 +90,20 @@ class Main extends Application {
     else if(params.getRaw.get(0).toInt==2){
       println("inserir gui aqui")
 
+
+
+
       stage.setTitle("My Hello World App")
-      val fxmlLoader =
-        new FXMLLoader(getClass.getResource("Controller.fxml"))
+      val fxmlLoader = new FXMLLoader(getClass.getResource("Controller.fxml"))
       val mainViewRoot: Parent = fxmlLoader.load()
-      val scene = new Scene(mainViewRoot)
+
+
+      val root = new StackPane(subScene, cameraView, mainViewRoot)
+      subScene.widthProperty.bind(root.widthProperty)
+      subScene.heightProperty.bind(root.heightProperty)
+      StackPane.setAlignment(mainViewRoot, Pos.TOP_LEFT)
+
+      val scene = new Scene(root, 810, 610, true, SceneAntialiasing.BALANCED)
       stage.setScene(scene)
       stage.show()
 
