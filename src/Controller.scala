@@ -6,7 +6,8 @@ import javafx.scene.control.{Button, ToggleButton, Tooltip}
 import javafx.scene.image.ImageView
 import javafx.scene.layout.BorderPane
 import javafx.scene.text._
-
+import GroupUsers._
+import Pure._
 
 class Controller{
 
@@ -38,6 +39,10 @@ class Controller{
     println("Hello World")
   }
 
+  def greenRemoveButton(): Unit={
+    oct1 = mapColourEffect(greenRemove,oct1)
+  }
+
   def onButtonScale1Clicked(): Unit = {
     oct1 = GroupUsers.scaleOctree(0.5,oct1, worldRoot)
 
@@ -56,7 +61,7 @@ class Controller{
 
   def clickToggle(): Unit = {
     if(toggleButton1.isSelected)
-      println("ola")
+      oct1=mapColourEffect(sepia,oct1)
     else
       println("adeus")
   }
